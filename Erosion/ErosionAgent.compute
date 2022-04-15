@@ -1,0 +1,116 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain;
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+
+RWStructuredBuffer<int3> _Positions;
+RWStructuredBuffer<int3> _HighestPositions;
+
+RWStructuredBuffer<int3> _Neighbors;
+RWStructuredBuffer<int> _Resets;
+RWStructuredBuffer<int> _Deposited;
+RWStructuredBuffer<int> _DistanceTraveled;
+
+
+RWStructuredBuffer<int3> _NewPositions;
+RWStructuredBuffer<int3> _NewHighestPositions;
+
+uint _Resolution;
+
+
+
+
+
+[numthreads(64,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    int3 lowestPosition = int3(9999,9999, 9999);
+
+    int3 temp;
+
+    _Resets[id.x] = 0;
+    
+
+    for(int i = 0; i < 8; i++){
+
+        int x = _Positions[id.x].x + _Neighbors[i].x;
+        int z = _Positions[id.x].z + _Neighbors[i].z;
+
+            if (0 < x && x < 512)
+            {
+                if (0 < z && z < 512)
+                {
+                    
+                    
+                    
+                   if (lowestPosition.y  > _HighestPositions[x + (z * 512)].y )
+                    {
+                        lowestPosition = _HighestPositions[x + (z * 512)];
+                        //lowestPosition = int3(_Positions[id.x].x, _Positions[id.x].y - 1, _Positions[id.x].z -1 );
+                        
+                    }
+                    
+                  
+                    
+                    
+
+                }
+            } 
+
+
+            
+    }
+
+
+    if (lowestPosition.y < _Positions[id.x].y)
+    {
+        if(_Deposited[id.x] == 0)
+        {
+
+            _Deposited[id.x] = 0;
+
+            _DistanceTraveled[id.x] = _DistanceTraveled[id.x] + 1;
+
+            int3 t = int3(_Positions[id.x].x, _Positions[id.x].y-1, _Positions[id.x].z);
+
+            _NewHighestPositions[id.x] = t;
+            _HighestPositions[_Positions[id.x].x + (_Positions[id.x].z * 512)] = t;
+
+        }
+
+        _NewPositions[id.x] = lowestPosition;
+    } else
+    {
+            
+        if(_DistanceTraveled[id.x] > 0)
+        {
+            
+            _Deposited[id.x] = 1;
+
+            _NewPositions[id.x] = _Positions[id.x].y + 1;
+            _DistanceTraveled[id.x] -= 1;
+            int3 t = int3(_Positions[id.x].x, _Positions[id.x].y + 1, _Positions[id.x].z);
+            
+            
+            _NewHighestPositions[id.x] = t;
+            _HighestPositions[_Positions[id.x].x + (_Positions[id.x].z * 512)] = t;
+              
+        } else
+        {
+            _Deposited[id.x] = 0;
+            
+            _Resets[id.x] = 1;
+            _DistanceTraveled[id.x] = 0;
+
+        } 
+
+    }
+
+
+
+}
+
+
+
